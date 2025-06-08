@@ -8,7 +8,7 @@
 Для работы видео монтажа нужно скачать и распаковать в корневую папку ffmpeg - https://drive.google.com/file/d/1NpjRyzXJxgsA9ElYj_abnRwuQNFIULP2/view
 если не хотите качать файлы от сюда то можно сказать целиком(вместе с ffmpeg) с гугла - https://drive.google.com/file/d/16XpBgqgJAZDki0RB24BuiFrJ8HAtDnDt/view?usp=sharing
 (fish-speech не включён в архивы)
-
+Мои медиа файлы (видео и аудио для персонажей) - https://drive.google.com/file/d/1DgKXN9q3XU-mJacIsTB3FEzHSDD82Mrm/view?usp=sharing
 запуск 
 0_run tts api	- API fish-speech, 0_0_run api 	для запуска второго API. в данном случае я просто скопировал api.py, поменял порт и переименовал в api2.py. можно дописать код для автоматизации этого процесса при желании
 1_run player	- плеер для видео, берёт из базы и выводит в html.  нужно отредактировать и настроить mysql_config под себя
