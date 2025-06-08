@@ -1,0 +1,17 @@
+mysql-connector-python==8.0.33
+pytchat
+requests==2.31.0
+ffmpeg-python==0.2.0
+pydub==0.25.1
+openai==1.12.0
+tqdm==4.66.1
+python-socketio==5.10.0
+aiomysql==0.2.0
+websockets==12.0
+tenacity==8.2.3
+google-api-python-client==2.104.0
+httpx==0.26.0
+aiofiles==23.2.1
+thefuzz==0.22.1
+python-Levenshtein==0.25.0
+aiohttp
