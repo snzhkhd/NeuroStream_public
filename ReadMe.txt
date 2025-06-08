@@ -5,7 +5,7 @@
 установленные модули - MySQL 8, PHP 8.1, Nginx-1.26
 импортировать базы из папки __DB в свой локальный сервер
 
-Для работы видео монтажа нужно скачать и скинуть в корневую папку ffmpeg - https://drive.google.com/file/d/1NpjRyzXJxgsA9ElYj_abnRwuQNFIULP2/view
+Для работы видео монтажа нужно скачать и распаковать в корневую папку ffmpeg - https://drive.google.com/file/d/1NpjRyzXJxgsA9ElYj_abnRwuQNFIULP2/view
 
 запуск 
 0_run tts api	- API fish-speech, 0_0_run api 	для запуска второго API. в данном случае я просто скопировал api.py, поменял порт и переименовал в api2.py. можно дописать код для автоматизации этого процесса при желании
