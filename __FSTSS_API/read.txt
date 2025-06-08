@@ -1,0 +1,3 @@
+либо руками менять порт
+parser.add_argument("--port", type=int, default=8100)
+либо запускать через аргументы

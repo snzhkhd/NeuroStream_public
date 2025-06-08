@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="UTF-8">
+    <title>NeuroStream Video Queue</title>
+    <style>
+        body { margin: 0; padding: 20px; font-family: Arial, sans-serif; }
+        #container {
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            gap: 10px;
+        }
+        #queue-info {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 8px;
+        }
+		#queue-list {
+			max-height: 150px; /* Ограничиваем высоту */
+			overflow-y: auto; /* Добавляем вертикальную прокрутку */
+			margin: 10px 0;
+			transition: max-height 0.5s ease-in-out;
+			overflow-y: hidden;
+		}
+		 #queue-list.expanded {
+			max-height: 400px; /* Максимальная высота при раскрытии */
+			overflow-y: auto;
+		}
+		#current-playing {
+            margin-bottom: 20px;
+        }
+        #video-container {
+            position: relative;
+            padding-top: 56.25%; /* 16:9 aspect ratio */
+        }
+        #video-player {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+			/* Убираем стандартные элементы управления */
+            -webkit-media-controls { display:none !important; }
+        }
+		/* Скрываем элементы управления для всех браузеров */
+        #video-player::-webkit-media-controls {
+            display: none !important;
+        }
+        #video-player::-webkit-media-controls-enclosure {
+            display: none !important;
+        }
+        #video-player::-webkit-media-controls-panel {
+            display: none !important;
+        }
+        #video-player::-webkit-media-controls-play-button {
+            display: none !important;
+        }
+        #video-player::-webkit-media-controls-start-playback-button {
+            display: none !important;
+        }
+		#badge {
+			background: #ffcc00;
+			padding: 2px 5px;
+			border-radius: 3px;
+			font-size: 0.8em;
+			display: none;
+		}
+		#corner-notice {
+			position: absolute;
+			top: 20px;
+			right: 20px;
+			background-color: rgba(0, 0, 0, 0.7);
+			color: white;
+			padding: 8px 12px;
+			border-radius: 4px;
+			font-size: 12px;
+			line-height: 1.4;
+			text-align: right;
+			z-index: 100;
+		}
+		
+		.corner-line {
+			margin: 2px 0;
+		}
+        .queue-item {
+			margin: 5px 0;
+			padding: 8px;
+			background: #fff;
+			border-radius: 4px;
+			display: flex;
+			align-items: center;
+			border-left: 4px solid transparent;
+			/* Добавляем перенос текста */
+			word-break: break-word;
+			hyphens: auto;
+			height: 50px; /* Фиксированная высота элемента */
+			transition: opacity 0.3s ease;
+		}
+
+		.queue-item.processing {
+			border-color: #ffc107;
+		}
+
+		.queue-item.completed {
+			border-color: #28a745;
+		}
+
+		.status-indicator {
+			width: 10px;
+			height: 10px;
+			border-radius: 50%;
+			margin-right: 10px;
+		}
+
+		.queue-item.queued .status-indicator {
+			background: #6c757d;
+		}
+
+		.queue-item.processing .status-indicator {
+			background: #ffc107;
+			animation: pulse 1.5s infinite;
+		}
+
+		.task-status {
+			margin-left: auto;
+			font-size: 0.9em;
+			color: #666;
+		}
+		.task-info {
+			flex: 1;
+			min-width: 0; /* Помогает с переносом длинного текста */
+		}
+
+		.task-status {
+			flex-shrink: 0; /* Запрещаем сжатие статуса */
+			margin-left: 15px;
+			font-size: 0.8em;
+			color: #666;
+			white-space: nowrap; /* Запрещаем перенос текста в статусе */
+		}
+		.queue-item:hover {
+			transform: translateX(5px);
+			box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+			transition: all 0.2s ease;
+		}
+		.current-playing {
+			border-left: 4px solid #2196F3 !important;
+			background: #e3f2fd !important;
+			cursor: default !important;
+		}
+		.status-indicator.playing {
+			background: #2196F3;
+			animation: pulse 1.5s infinite;
+		}
+		#current-info .task-info {
+			display: flex;
+			flex-direction: column;
+			gap: 4px;
+		}
+
+		#current-info .topic {
+			color: #666;
+			font-size: 0.9em;
+		}
+		/* Стили для секции сценариев */
+		#scenario-commands {
+			margin-top: 20px;
+			padding: 15px;
+			background: #f0f4f8;
+			border-radius: 8px;
+		}
+
+		.tags-container {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 8px;
+			margin: 10px 0;
+		}
+		.scenario-tag {
+			background: #2196F3;
+			color: white;
+			padding: 6px 12px;
+			border-radius: 15px;
+			font-size: 0.9em;
+			cursor: help;
+			transition: transform 0.2s;
+			position: relative;
+		}
+		.scenario-off {
+			background: #363b40;
+			color: white;
+			padding: 6px 12px;
+			border-radius: 15px;
+			font-size: 0.9em;
+			cursor: help;
+			transition: transform 0.2s;
+			position: relative;
+		}
+		.scenario-donat {
+			background: #ffc107;
+			color: white;
+			padding: 6px 12px;
+			border-radius: 15px;
+			font-size: 0.9em;
+			cursor: help;
+			transition: transform 0.2s;
+			position: relative;
+		}
+		.scenario-donat2 {
+			background: #666;
+			color: white;
+			padding: 6px 12px;
+			border-radius: 15px;
+			font-size: 0.9em;
+			cursor: help;
+			transition: transform 0.2s;
+			position: relative;
+		}
+		/* Добавляем иконку для индикации состояния */
+		#queue-list::after {
+			content: '▼';
+			position: absolute;
+			right: 15px;
+			bottom: 5px;
+			color: #666;
+			transition: transform 0.3s ease;
+		}
+
+		#queue-list.expanded::after {
+			transform: rotate(180deg);
+		}
+
+		.hidden {
+			opacity: 0;
+			height: 0;
+			margin: 0;
+			padding: 0;
+			transition: all 0.3s ease;
+		}
+		@keyframes pulse {
+			0% { opacity: 1; }
+			50% { opacity: 0.5; }
+			100% { opacity: 1; }
+		}
+    </style>
+</head>
+<body>
+	<div id="corner-notice">
+		<div class="corner-line">AI-Generated Content</div>
+	</div>
+    <div id="container">
+        <div id="queue-info">
+            <h2>Очередь воспроизведения</h2>
+			<div id="current-info">
+				<h3>Сейчас играет:</h3>
+				<div class="queue-item current-playing">
+					<div class="status-indicator playing"></div>
+					<div class="task-info">
+						<strong id="current-author"></strong>
+						<span id="badge">⭐AI Content</span>
+						<div class="topic" id="current-topic"></div>
+					</div>
+				</div>
+			</div>
+            <h3>Следующие видео:</h3>
+            <div id="queue-list"></div>
+				<div id="queue-stats">
+            Всего в очереди: <span id="total">0</span> / 20<br>
+				В обработке: <span id="processing">0</span><br>
+				Завершено: <span id="completed">0</span>
+            </div>
+					<div id="scenario-commands">
+						<h3>Доступные сценарии:</h3>
+						<div class="tags-container">
+							<div class="scenario-tag">!bladerun</div>
+							<div class="scenario-tag">!gofman</div>
+							<div class="scenario-tag">!sanych2049</div>
+							<div class="scenario-tag">!zhirik</div>
+							<div class="scenario-tag">!prokopenko</div>
+							<div class="scenario-tag">!zhmuri</div>
+							<div class="scenario-tag">!dbh</div>
+							<!-- <div class="scenario-off" title="Технологические прогнозы и футурология">!prokopenko</div> -->
+						</div>
+						<div class="hint">Напишите команду в чат указав тэг и тему</div>
+						<div class="hint">Например: </div>
+						<div class="scenario-off" >!gofman Теория плоской земли</div>
+						<!-- <div></div> -->
+						<!-- <div></div> -->
+						<!-- <h3><div class="scenario-donat" >⭐Поддержка:⭐</div></h3> -->
+						<!-- <div class="scenario-donat2" >⭐ Тема без очереди - 100р ⭐⭐Тема без очереди - 500р</div> -->
+						<!-- <div class="scenario-donat2" >⭐⭐Тема без очереди - 500р</div> -->
+					</div>
+        </div>
+        <div>
+            <div id="video-container">
+                <video id="video-player" controls></video>
+            </div>
+        </div>
+    </div>
+
+    <script>
+		let isExpanded = false;
+        let currentVideoId = null;
+        let isPlaying = false; // Добавляем в начало скрипта
+		let counter = 0; // Счетчик обычных видео
+		
+		function toggleQueueList() {
+			const queueList = document.getElementById('queue-list');
+			isExpanded = !isExpanded;
+			queueList.classList.toggle('expanded', isExpanded);
+			
+			// Подсветка при раскрытии
+			if(isExpanded) {
+				queueList.style.boxShadow = '0 0 15px rgba(33,150,243,0.3)';
+				setTimeout(() => {
+					queueList.style.boxShadow = 'none';
+				}, 1000);
+			}
+			
+			// Автоматическое закрытие
+			if(isExpanded) {
+				setTimeout(toggleQueueList, 10000);
+			}
+		}
+    
+		// Автоматическое раскрытие каждую минуту
+		setInterval(() => {
+			if(!isExpanded) toggleQueueList();
+		}, 60000);
+		
+        async function updateQueue() {
+			try {
+				const response = await fetch('http://localhost:8010/api/queue');
+				const data = await response.json();
+				
+				// Обновляем текущее видео
+				const currentItem = data.queue.find(item => item.status === 'playing');
+				if(currentItem) {
+					document.getElementById('current-author').textContent = currentItem.author;
+					<!-- document.getElementById('current-topic').textContent = currentItem.topic; -->
+					const topicElement = document.getElementById('current-topic');
+					topicElement.textContent = currentItem.topic || currentItem.short_topic || 'Без темы';
+					topicElement.title = currentItem.topic;
+					document.getElementById('badge').style.display = currentItem.id === -1 ? 'inline' : 'none';
+				}
+				
+				// Фильтруем очередь - исключаем текущее видео
+				const filteredQueue = data.queue.filter(item => item.status !== 'playing');
+				
+				// Обновляем список следующих задач
+				const queueList = document.getElementById('queue-list');
+				if(filteredQueue.length > 0) {
+					queueList.innerHTML = filteredQueue.map(item => `
+						<div class="queue-item ${item.status} ${isExpanded || index < 3 ? '' : 'hidden'}">
+							<div class="status-indicator"></div>
+							<div class="task-info">
+								${item.donation_level > 0 ? '⭐'.repeat(item.donation_level) : ''}
+								<strong>${item.author}</strong>
+								<div class="topic">${item.short_topic}${item.topic?.length > 20 ? '...' : ''}</div>
+							</div>
+							<div class="task-status">${getStatusText(item.status)}</div>
+						</div>
+					`).join('');
+				} else {
+					queueList.innerHTML = '<div class="queue-item">Очередь пуста</div>';
+				}
+				
+				// Обновляем статистику
+				document.getElementById('total').textContent = data.status.total || 0;
+				document.getElementById('processing').textContent = data.status.processing || 0;
+				document.getElementById('completed').textContent = data.status.completed || 0;
+			} catch (e) {
+				console.error('Ошибка обновления очереди:', e);
+			}
+		}
+
+		function getStatusText(status) {
+			const statusMap = {
+				'queued': 'В очереди',
+				'processing': 'Генерируется...',
+				'completed': 'Готово',
+				'playing' : 'Воспроизводится'
+			};
+			return statusMap[status] || status;
+		}
+
+        async function playNextVideo() {
+			if (isPlaying) return; // Защита от множественных вызовов
+			isPlaying = true;
+			try {
+				if (counter >= 3) {
+					await playDisclaimer();
+					counter = 0;
+				}
+			
+				const response = await fetch('http://localhost:8010/api/next_video');
+				const videoPlayer = document.getElementById('video-player');
+				
+				if (response.status === 204) {
+					// Если совсем нет видео (даже фоновых)
+					videoPlayer.style.display = 'none';
+					isPlaying = false;
+					setTimeout(playNextVideo, 1000);
+					return;
+				}
+				
+				const data = await response.json();
+				let videoUrl;
+				if (data.id === -1) {
+					videoUrl = `http://localhost:8001${data.video_path}`;
+				} else {
+					videoUrl = `http://localhost:8001${data.video_path}`;
+				}
+				// Обновляем информацию о видео
+				document.getElementById('current-author').textContent = data.author;
+				document.getElementById('current-topic').textContent = data.topic;
+				
+				// Устанавливаем источник видео
+				videoPlayer.src = videoUrl //data.video_path;
+				videoPlayer.style.display = 'block';
+				
+				// Настройка автоматического воспроизведения
+				<!-- videoPlayer.muted = true; // Сначала включаем без звука (требование браузеров) -->
+				videoPlayer.playsInline = true; // Для корректной работы на мобильных устройствах
+				
+				const playPromise = videoPlayer.play();
+				
+				if (playPromise !== undefined) {
+					playPromise.catch(error => {
+						console.error('Автовоспроизведение не сработало:', error);
+						isPlaying = false; // Сбрасываем флаг при ошибке воспроизведения
+					});
+				}
+				// Обработчик окончания видео
+				videoPlayer.onended = async () => {
+					try {
+						if (data.id !== -1) {
+							await fetch(`http://localhost:8010/api/video_played/${data.id}`, { 
+								method: 'POST' 
+							});
+						}
+					} catch (e) {
+						console.error('Ошибка отметки просмотра:', e);
+					} finally {
+						isPlaying = false; // Всегда сбрасываем флаг
+						playNextVideo(); // Запускаем следующее видео
+					}
+				};
+				
+				
+				// Для фоновых видео не отмечаем как просмотренное
+				if (data.id === -1) {
+					document.getElementById('badge').style.display = "inline";
+				} else {
+					document.getElementById('badge').style.display = "none";
+				}
+				counter++;
+			} catch (e) {
+				console.error('Ошибка получения видео:', e);
+				setTimeout(playNextVideo, 1000); // Повторяем через 5 сек при ошибке
+			}
+		}
+		async function playDisclaimer() {
+			const videoPlayer = document.getElementById('video-player');
+			
+			// Загрузка дисклеймера
+			videoPlayer.src = 'http://localhost:8001/static/disclaimer.mp4';
+			videoPlayer.style.display = 'block';
+			
+			// Обновляем информацию
+			document.getElementById('current-author').textContent = 'Системное сообщение';
+			document.getElementById('current-topic').textContent = 'Важное уведомление';
+			document.getElementById('badge').style.display = 'inline';
+			
+			return new Promise((resolve) => {
+				videoPlayer.onended = resolve;
+				videoPlayer.play().catch(console.error);
+			});
+		}
+		
+		
+        // Запускаем обновление каждые 5 секунд
+        setInterval(updateQueue, 500);
+        // Начальная загрузка
+        updateQueue();
+        playNextVideo();
+    </script>
+</body>
+</html>
